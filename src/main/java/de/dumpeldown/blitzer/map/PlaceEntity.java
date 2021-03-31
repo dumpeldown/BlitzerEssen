@@ -1,16 +1,18 @@
 package de.dumpeldown.blitzer.map;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
-public class PlaceEntity {
-    String displayName;
-    double latitude;
-    double longitude;
-    String type;
-    double[] boundingBox;
+public class PlaceEntity implements Serializable {
+    private String displayName;
+    private double latitude;
+    private double longitude;
+    private String type;
+    private double[] boundingBox;
 
     public PlaceEntity(JSONObject object){
         this.displayName = object.getString("display_name");
@@ -21,7 +23,12 @@ public class PlaceEntity {
         }
         this.latitude = object.getDouble("lat");
         this.longitude = object.getDouble("lon");
-        this.type = object.getString("class");
+        try {
+            this.type = object.getString("class");
+        }catch(JSONException jsonException){
+            System.out.println("Attribut 'class' bei diesem Datensatz nicht vorhanden.");
+            this.type = "undefined";
+        }
     }
 
     @Override
@@ -39,5 +46,9 @@ public class PlaceEntity {
 
     public double getLongitude() {
         return longitude;
+    }
+
+    public String getDisplayName() {
+        return displayName;
     }
 }

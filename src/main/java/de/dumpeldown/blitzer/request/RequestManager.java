@@ -52,13 +52,17 @@ public class RequestManager {
     }
 
     public JSONObject makeRequest() {
+        int responsecode = 0;
         try {
-            int responsecode = conn.getResponseCode();
-            System.out.println("Code: " + responsecode);
+            responsecode = conn.getResponseCode();
         } catch (IOException exception) {
-            System.out.println("Fehler, kann nicht mit dem Response Code arbeiten.");
+            exception.printStackTrace();
         }
-        System.out.println("Verwendetes Encoding: " + conn.getContentEncoding());
+        if(responsecode != 200){
+            System.out.println("Code: "+responsecode+" -> Fehler, kann nicht mit dem Response " +
+                    "Code arbeiten.");
+            return null;
+        }
         InputStream stream;
         InputStreamReader reader;
         BrotliInputStream brotliInputStream;

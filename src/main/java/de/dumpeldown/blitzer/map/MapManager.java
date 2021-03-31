@@ -17,40 +17,41 @@ import java.util.Set;
 public class MapManager {
     private JXMapViewer mapViewer;
 
-    public MapManager(ArrayList<double[]> lat_long) {
+    public MapManager(ArrayList<PlaceEntity> allEntities) {
         mapViewer = new JXMapViewer();
 
-        // Create a TileFactoryInfo for OpenStreetMap
         TileFactoryInfo info = new OSMTileFactoryInfo();
         DefaultTileFactory tileFactory = new DefaultTileFactory(info);
         mapViewer.setTileFactory(tileFactory);
 
-        // Use 8 threads in parallel to load the tiles
         tileFactory.setThreadPoolSize(8);
 
-        // Set the focus
+        /*
+        * Startfokus der Karte auf einen Standort in der Mitte von Essen setzen
+         */
         GeoPosition essen_center = new GeoPosition(51.452015, 7.012837);
         mapViewer.setZoom(6);
         mapViewer.setAddressLocation(essen_center);
-        System.out.println("Mitte der Karte auf Essen HBF gesetzt");
 
-        //add waypoints to map
         Set<DefaultWaypoint> wayPoints = new HashSet<>();
         WaypointPainter<DefaultWaypoint> waypointPainter = new WaypointPainter<>();
 
-        for (double[] p : lat_long) {
-            System.out.println("neuen DefaultWaypoint hinzugefügt.");
-            wayPoints.add(new DefaultWaypoint(p[0], p[1]));
+        for (PlaceEntity entity : allEntities) {
+            wayPoints.add(new DefaultWaypoint(
+                    entity.getLatitude(),
+                    entity.getLongitude()
+            ));
         }
 
         waypointPainter.setWaypoints(wayPoints);
         mapViewer.setOverlayPainter(waypointPainter);
-
         initListeners();
     }
 
     public void displayMap() {
-        // Display the viewer in a JFrame
+        /*
+        * Map auf JFrame anzeigen
+         */
         JFrame frame = new JFrame("Blitzer in Essen");
         frame.getContentPane().add(mapViewer);
         frame.setSize(800, 600);
@@ -68,7 +69,5 @@ public class MapManager {
         mapViewer.addMouseListener(new CenterMapListener(mapViewer));
         mapViewer.addMouseWheelListener(new ZoomMouseWheelListenerCursor(mapViewer));
         mapViewer.addKeyListener(new PanKeyListener(mapViewer));
-        System.out.println("Listeners gesetzt");
     }
-
 }
