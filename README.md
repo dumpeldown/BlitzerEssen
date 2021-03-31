@@ -13,13 +13,11 @@ Display a simple map of mobile speedtraps in the city of Essen, Germany.
    [JXMapViewer2](https://github.com/msteiger/jxmapviewer2)
    
 ## Work in Progress
-- Get the OCR working correctly
-    - I think the problem right now is the image size, play around with splitting a one day 
-      column into multiple rectangles
-- playing around with the locationiq API, make sure most of the time the streets are correctly 
-  translated into location data
-- directly putting street names into api query and display on map
+- work with more data to find errors and problems
+- add labels in the markers on the map to display the streetname
+- for longer streets, use the boundarybox data to display a line through the street (?)
 - differentiating between days (monday through sunday) when displaying radar traps
+- rewrite serialized data when working with new data (or maybe serialize to multiple files?)
 
 ## Build & run
 currently no information, this will be added when the application reaches a more desirable state
