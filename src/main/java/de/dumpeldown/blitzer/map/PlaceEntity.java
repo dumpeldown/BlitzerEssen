@@ -51,4 +51,8 @@ public class PlaceEntity implements Serializable {
     public String getDisplayName() {
         return displayName;
     }
+
+    public String getType() {
+        return type;
+    }
 }
