@@ -27,7 +27,7 @@ public class MapManager {
         tileFactory.setThreadPoolSize(8);
 
         /*
-        * Startfokus der Karte auf einen Standort in der Mitte von Essen setzen
+         * Startfokus der Karte auf einen Standort in der Mitte von Essen setzen
          */
         GeoPosition essen_center = new GeoPosition(51.452015, 7.012837);
         mapViewer.setZoom(6);
@@ -37,10 +37,12 @@ public class MapManager {
         WaypointPainter<DefaultWaypoint> waypointPainter = new WaypointPainter<>();
 
         for (PlaceEntity entity : allEntities) {
-            wayPoints.add(new DefaultWaypoint(
-                    entity.getLatitude(),
-                    entity.getLongitude()
-            ));
+            wayPoints.add(
+                    new DefaultWaypoint(
+                            entity.getLatitude(),
+                            entity.getLongitude()
+                    )
+            );
         }
 
         waypointPainter.setWaypoints(wayPoints);
@@ -50,7 +52,7 @@ public class MapManager {
 
     public void displayMap() {
         /*
-        * Map auf JFrame anzeigen
+         * Map auf JFrame anzeigen
          */
         JFrame frame = new JFrame("Blitzer in Essen");
         frame.getContentPane().add(mapViewer);
