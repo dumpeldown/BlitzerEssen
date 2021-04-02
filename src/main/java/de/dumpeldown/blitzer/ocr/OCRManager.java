@@ -1,5 +1,6 @@
 package de.dumpeldown.blitzer.ocr;
 
+import de.dumpeldown.blitzer.main.Main;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
 
@@ -13,25 +14,26 @@ import java.util.ArrayList;
 public class OCRManager {
     private static Tesseract tesseract;
     private static BufferedImage bufferedImage;
-
-    public static void initTesseract() {
+    public OCRManager(){
         tesseract = new Tesseract();
-        tesseract.setDatapath("C://Users//Jurek//Documents//programming-fun//Blitzer//src//main" +
-                "//resources//tesseract_data");
+        File f = new File(".");
+        System.out.println(f.getAbsolutePath());
+        String absolutPath = f.getAbsolutePath();
+        absolutPath = absolutPath.substring(0,absolutPath.length()-1);
+        tesseract.setDatapath(absolutPath+"src\\main\\resources\\de\\dumpeldown\\blitzer\\ocr" +
+                "\\tesseract_data");
         tesseract.setLanguage("deu");
     }
 
-    public static void initImage() {
+    public void init(){
         try {
-            bufferedImage = ImageIO.read(new File("C://Users//Jurek//Documents//programming-fun" +
-                    "//Blitzer//src//main//resources" +
-                    "//tesseract_data//3.png"));
+            bufferedImage = ImageIO.read(getClass().getResource(Main.IMAGE_NAME));
         } catch (IOException exception) {
             exception.printStackTrace();
         }
     }
 
-    public static ArrayList<String> pngToText() {
+    public ArrayList<String> pngToText() {
         ArrayList<String> straßen = new ArrayList<>();
         int width = bufferedImage.getWidth();
         int height = bufferedImage.getHeight();
