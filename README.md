@@ -17,7 +17,24 @@ Display a simple map of mobile speedtraps in the city of Essen, Germany.
 - add labels in the markers on the map to display the streetname
 - for longer streets, use the boundarybox data to display a line through the street (?)
 - differentiating between days (monday through sunday) when displaying radar traps
-- rewrite serialized data when working with new data (or maybe serialize to multiple files?)
+
+## Image & Configuration files
+See the [uploaded files](https://github.com/dumpeldown/BlitzerEssen/tree/main/src/main/resources/de/dumpeldown/blitzer/ocr) for reference.
+### Image
+- The image to be processed must be located unter the resources folder, with the correct package 
+  name
+- See [tess4j supported files](https://github.com/nguyenq/tess4j#features)
+  
+### Image Configuration
+- for the OCR to properly work you need to add a '.prop' - File in the same directory
+- the name must be `<imageName>.prop`
+- contains three values: (See example below)
+     - days: Number of days displayed in the image (usually 5 or 7)
+     - x: pixel value of the border gap from the left side to the first streetname
+     - y: pixel value of the border gap from the **top** side to the first streetname
+````bash
+x = 8 ; y = 40 ; days = 7
+````
 
 ## Build & run
 currently no information, this will be added when the application reaches a more desirable state
