@@ -13,22 +13,23 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class Main {
+    public static final String IMAGE_NAME = "1.png";
     public static void main(String[] args) {
-        File out = new File("allEntities");
+        File out = new File("allEntities"+IMAGE_NAME);
         ArrayList<PlaceEntity> allEntities = new ArrayList<>();
         ArrayList<String> allStreets = new ArrayList<>();
         try {
             if (out.createNewFile() || out.length() == 0) {
                 System.out.println("Die 'allEntities'-Datei existiert nicht oder ist leer.");
 
-                OCRManager.initTesseract();
-                OCRManager.initImage();
+                OCRManager ocrManager = new OCRManager();
+                ocrManager.init();
                 /*
                 Produziert 7 Strings, die die 7 Spalten des Bildes darstellen.
                 Einer dieser Strings enthält alle Straßen, diese werden dann an den linebreaks in
                  einzelne Worte gesplittet. Leere Zeilen werden dann entfernt.
                  */
-                for (String s : OCRManager.pngToText()) {
+                for (String s : ocrManager.pngToText()) {
                     ArrayList<String> toRemove = new ArrayList<>();
                     List<String> strings =
                             Arrays.stream(s.split("\\r?\\n")).collect(Collectors.toList());
@@ -57,9 +58,8 @@ public class Main {
                     System.out.println(street);
                     done++;
                     if (done % 10 == 0) {
-                        System.out.println("["+(todo/done)+"%]\t"+done + " / " + todo + " Straßen" +
-                                " " +
-                                "bearbeitet.");
+                        System.out.println("["+(todo/done)*100+"%]\t"
+                                +done + " / " + todo + "Straßen bearbeitet.");
                     }
                     RequestManager requestManager = new RequestManager(street + " essen");
                     JSONObject jsonObject = requestManager.makeRequest();
@@ -99,7 +99,7 @@ public class Main {
         serialize data nachdem das Geocoding abgeschlossen ist.
          */
         try {
-            FileOutputStream fos = new FileOutputStream("allEntities");
+            FileOutputStream fos = new FileOutputStream("allEntities"+IMAGE_NAME);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
             oos.writeObject(allEntities);
             oos.close();
@@ -113,7 +113,7 @@ public class Main {
 
     private static ArrayList<PlaceEntity> deserializeEntities() {
         try {
-            FileInputStream fis = new FileInputStream("allEntities");
+            FileInputStream fis = new FileInputStream("allEntities"+IMAGE_NAME);
             ObjectInputStream ois = new ObjectInputStream(fis);
             ArrayList<PlaceEntity> allEntities = (ArrayList<PlaceEntity>) ois.readObject();
             ois.close();
