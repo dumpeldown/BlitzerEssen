@@ -13,17 +13,21 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class Main {
-    public static final String IMAGE_NAME = "1.png";
+    public static final String IMAGE_NAME = "3.png";
+    public static final String SERIALIZE_NAME = "allEntities"+IMAGE_NAME.split("\\.")[0];
     public static void main(String[] args) {
-        File out = new File("allEntities"+IMAGE_NAME);
+        File serializeFile = new File(SERIALIZE_NAME);
         ArrayList<PlaceEntity> allEntities = new ArrayList<>();
         ArrayList<String> allStreets = new ArrayList<>();
         try {
-            if (out.createNewFile() || out.length() == 0) {
+            if (serializeFile.createNewFile() || serializeFile.length() == 0) {
                 System.out.println("Die 'allEntities'-Datei existiert nicht oder ist leer.");
 
                 OCRManager ocrManager = new OCRManager();
-                ocrManager.init();
+                if(!ocrManager.init()){
+                    System.out.println("Beende Program wegen Fehler.");
+                    return;
+                }
                 /*
                 Produziert 7 Strings, die die 7 Spalten des Bildes darstellen.
                 Einer dieser Strings enthält alle Straßen, diese werden dann an den linebreaks in
@@ -58,8 +62,8 @@ public class Main {
                     System.out.println(street);
                     done++;
                     if (done % 10 == 0) {
-                        System.out.println("["+(todo/done)*100+"%]\t"
-                                +done + " / " + todo + "Straßen bearbeitet.");
+                        System.out.println("["+(((double)done/(double)todo)*100)+"%]\t"
+                                +done + " / " + todo + " Straßen bearbeitet.");
                     }
                     RequestManager requestManager = new RequestManager(street + " essen");
                     JSONObject jsonObject = requestManager.makeRequest();
@@ -91,6 +95,13 @@ public class Main {
 
         MapManager mapManager = new MapManager(allEntities);
         mapManager.displayMap();
+
+        for(PlaceEntity entity : allEntities){
+            if(entity.getType().equals("undefined")){
+                System.out.println("Bei dieser Straße ist wahrscheinlich ein Fehler " +
+                        "aufgetreten: "+entity.getDisplayName());
+            }
+        }
     }
 
 
@@ -99,7 +110,7 @@ public class Main {
         serialize data nachdem das Geocoding abgeschlossen ist.
          */
         try {
-            FileOutputStream fos = new FileOutputStream("allEntities"+IMAGE_NAME);
+            FileOutputStream fos = new FileOutputStream(SERIALIZE_NAME);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
             oos.writeObject(allEntities);
             oos.close();
@@ -113,7 +124,7 @@ public class Main {
 
     private static ArrayList<PlaceEntity> deserializeEntities() {
         try {
-            FileInputStream fis = new FileInputStream("allEntities"+IMAGE_NAME);
+            FileInputStream fis = new FileInputStream(SERIALIZE_NAME);
             ObjectInputStream ois = new ObjectInputStream(fis);
             ArrayList<PlaceEntity> allEntities = (ArrayList<PlaceEntity>) ois.readObject();
             ois.close();
