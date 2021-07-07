@@ -13,11 +13,11 @@ import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
 
-public class RequestManager {
+public class LocationRequestManager {
 
     private static HttpURLConnection conn;
 
-    public RequestManager(String address) {
+    public LocationRequestManager(String address) {
         URL url = null;
         try {
             url = new URL("https://eu1.locationiq.com/v1/search.php" +
@@ -58,8 +58,8 @@ public class RequestManager {
         } catch (IOException exception) {
             exception.printStackTrace();
         }
-        if(responsecode != 200){
-            System.out.println("Code: "+responsecode+" -> Fehler, kann nicht mit dem Response " +
+        if (responsecode != 200) {
+            System.out.println("Code: " + responsecode + " -> Fehler, kann nicht mit dem Response " +
                     "Code arbeiten.");
             return null;
         }
