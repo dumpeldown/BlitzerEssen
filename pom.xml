@@ -28,6 +28,14 @@
             <artifactId>dec</artifactId>
             <version>0.1.2</version>
         </dependency>
+        <dependency>
+            <groupId>com.squareup.okhttp</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>2.7.5</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
+
+
     </dependencies>
 
     <properties>
