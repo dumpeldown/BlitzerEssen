@@ -1,90 +1,53 @@
 package de.dumpeldown.blitzer.main;
 
+import de.dumpeldown.blitzer.image.ImageManager;
 import de.dumpeldown.blitzer.map.MapManager;
 import de.dumpeldown.blitzer.map.PlaceEntity;
 import de.dumpeldown.blitzer.ocr.OCRManager;
-import de.dumpeldown.blitzer.request.RequestManager;
+import de.dumpeldown.blitzer.request.LocationRequestManager;
 import org.json.JSONObject;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Scanner;
 import java.util.stream.Collectors;
 
 public class Main {
-    public static final String IMAGE_NAME = "3.png";
-    public static final String SERIALIZE_NAME = "allEntities"+IMAGE_NAME.split("\\.")[0];
+    public static String IMAGE_NAME;
+    public static String SERIALIZE_NAME;
+    private static int errorCounter = 0;
+
     public static void main(String[] args) {
-        File serializeFile = new File(SERIALIZE_NAME);
+        ArrayList<String> allStreets;
         ArrayList<PlaceEntity> allEntities = new ArrayList<>();
-        ArrayList<String> allStreets = new ArrayList<>();
+        boolean value;
+        do {
+            value = chooseFile();
+        } while (!value);
+        if (!new ImageManager(IMAGE_NAME).jfifToPng()) {
+            System.out.println("Fehler beim Convertieren und PNG!");
+            System.exit(-1);
+        }
+        File serializeFile = new File("./serializedData/" + SERIALIZE_NAME);
         try {
             if (serializeFile.createNewFile() || serializeFile.length() == 0) {
-                System.out.println("Die 'allEntities'-Datei existiert nicht oder ist leer.");
+                System.out.println("Die serialisierte Datei existiert nicht oder ist leer.");
 
                 OCRManager ocrManager = new OCRManager();
-                if(!ocrManager.init()){
+                if (!ocrManager.init()) {
                     System.out.println("Beende Program wegen Fehler.");
                     return;
                 }
-                /*
-                Produziert 7 Strings, die die 7 Spalten des Bildes darstellen.
-                Einer dieser Strings enthält alle Straßen, diese werden dann an den linebreaks in
-                 einzelne Worte gesplittet. Leere Zeilen werden dann entfernt.
-                 */
-                for (String s : ocrManager.pngToText()) {
-                    ArrayList<String> toRemove = new ArrayList<>();
-                    List<String> strings =
-                            Arrays.stream(s.split("\\r?\\n")).collect(Collectors.toList());
-                    for (String str : strings) {
-                        /*
-                        Leere Zeilen und Feiertag rausfiltern.
-                         */
-                        if (str.isEmpty() || str.equals("Feiertag")) {
-                            toRemove.add(str);
-                        }
-                    }
-                    System.out.println("Insgesamt " + toRemove.size() + " leere zeilen entfernt " +
-                            "aus einer Spalte entfernt.");
-                    strings.removeAll(toRemove);
-                    allStreets.addAll(strings);
+                allStreets = getStreetNames(ocrManager);
+                allEntities = geocodeEntities(allStreets);
+                if (allEntities != null) {
+                    serializeEntities(allEntities);
+                } else {
+                    System.out.println("Exiting, please debug.");
+                    return;
                 }
-                /*
-                Hier wird das Geocoding aller Straßen durchgeführt.
-                 */
-                int done = 1;
-                int todo = allStreets.size();
-                System.out.println("Starte 'forward-gecoding' für alle Straßen, erwartete Dauer " +
-                        "circa " + todo +" Sekunden.");
-
-                for (String street : allStreets) {
-                    System.out.println(street);
-                    done++;
-                    if (done % 10 == 0) {
-                        System.out.println("["+(((double)done/(double)todo)*100)+"%]\t"
-                                +done + " / " + todo + " Straßen bearbeitet.");
-                    }
-                    RequestManager requestManager = new RequestManager(street + " essen");
-                    JSONObject jsonObject = requestManager.makeRequest();
-                    if (jsonObject == null) {
-                        System.out.println("Fehler beim Abrufen der Daten der 'forward-geocoding' " +
-                                "API, versuche jetzt nächste Straße.");
-                        continue;
-                    }
-                    PlaceEntity entity = new PlaceEntity(jsonObject);
-                    allEntities.add(entity);
-                    /*
-                    * Zwischen Request muss ein Timeout von 500ms liegen, da in meinem LocationIQ
-                    *  Plan 2 req/sec erlaubt sind. Mit 1000ms bin ich dann auf der sicheren Seite.
-                     */
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-                serializeEntities(allEntities);
             } else {
                 System.out.println("Benutze serialisierte Daten aus einem vorherigen Durchlauf.");
                 allEntities = deserializeEntities();
@@ -92,16 +55,119 @@ public class Main {
         } catch (IOException exception) {
             exception.printStackTrace();
         }
-
         MapManager mapManager = new MapManager(allEntities);
         mapManager.displayMap();
+    }
 
-        for(PlaceEntity entity : allEntities){
-            if(entity.getType().equals("undefined")){
-                System.out.println("Bei dieser Straße ist wahrscheinlich ein Fehler " +
-                        "aufgetreten: "+entity.getDisplayName());
+    private static ArrayList<String> getStreetNames(OCRManager ocrManager) {
+        /*
+        Produziert 7 Strings, die die 7 Spalten des Bildes darstellen.
+        Einer dieser Strings enthält alle Straßen, diese werden dann an den linebreaks in
+         einzelne Worte gesplittet. Leere Zeilen werden dann entfernt.
+         */
+        ArrayList<String> allStreets = new ArrayList<>();
+        for (String s : ocrManager.pngToText()) {
+            ArrayList<String> toRemove = new ArrayList<>();
+            List<String> strings =
+                    Arrays.stream(s.split("\\r?\\n")).collect(Collectors.toList());
+            for (String str : strings) {
+                        /*
+                        Leere Zeilen und Feiertag rausfiltern.
+                         */
+                if (str.isEmpty() || str.equals("Feiertag")) {
+                    toRemove.add(str);
+                }
+            }
+            System.out.println("Insgesamt " + toRemove.size() + " leere zeilen entfernt " +
+                    "aus einer Spalte entfernt.");
+            strings.removeAll(toRemove);
+            allStreets.addAll(strings);
+        }
+        return allStreets;
+    }
+
+    private static ArrayList<PlaceEntity> geocodeEntities(ArrayList<String> allStreets) {
+        /*
+        Hier wird das Geocoding aller Straßen durchgeführt.
+         */
+        ArrayList<PlaceEntity> allEntities = new ArrayList<>();
+        ArrayList<String> errorStreets = new ArrayList<>();
+        int done = 1;
+        int todo = allStreets.size();
+        System.out.println("Starte 'forward-gecoding' für alle Straßen, erwartete Dauer " +
+                "circa " + todo + " Sekunden.");
+
+        for (String street : allStreets) {
+            System.out.println(street);
+            done++;
+            if (done % 10 == 0) {
+                System.out.println("[" + ((int) ((double) done / (double) todo) * 100) + "%]\t"
+                        + done + " / " + todo + " Straßen bearbeitet.");
+            }
+            LocationRequestManager locationRequestManager = new LocationRequestManager(street + " essen");
+            JSONObject jsonObject = locationRequestManager.makeRequest();
+            if (jsonObject == null) {
+                System.out.println("Fehler beim Abrufen der Daten der 'forward-geocoding' " +
+                        "API, versuche jetzt nächste Straße.");
+                errorCounter++;
+                if (errorCounter == 10) {
+                    System.out.println("Aborting geocoding, getting a lot of errors.\n" +
+                            "Maybe your api key is not set correctly?");
+                    return null;
+                }
+                continue;
+            }
+            PlaceEntity entity = new PlaceEntity(jsonObject);
+            if (entity.getType().equals("undefined")) {
+                errorStreets.add(street);
+            } else {
+                allEntities.add(entity);
+            }
+            /*
+             * Zwischen Request muss ein Timeout von 500ms liegen, da in meinem LocationIQ
+             *  Plan 2 req/sec erlaubt sind. Mit 1000ms bin ich dann auf der sicheren Seite.
+             */
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
+        System.out.println("Bei diesen Straßen ist ein Problem aufgetreten (Wahrscheinlich OCR Fehler):");
+        for (String error : errorStreets) {
+            System.out.println(error);
+        }
+        return allEntities;
+    }
+
+    private static boolean chooseFile() {
+        File folder = new File(".\\images");
+        List<File> listOfFiles = Arrays.asList(folder.listFiles());
+        ArrayList<File> filteredFiles = new ArrayList<>();
+
+        for (File f : listOfFiles) {
+            if (f.isFile() && f.getName().contains(".png")) {
+                filteredFiles.add(f);
+            }
+        }
+        int i = 0;
+        for (File ff : filteredFiles) {
+            System.out.println(i + 1 + ": " + ff.getName());
+            i++;
+        }
+        System.out.println("Welche Datei willst du als Karte darstellen?");
+        Scanner sc = new Scanner(System.in);
+        int auswahl = sc.nextInt();
+        if (auswahl <= filteredFiles.size() && auswahl > 0) {
+            IMAGE_NAME = filteredFiles.get(auswahl - 1).getName();
+            SERIALIZE_NAME = IMAGE_NAME.split("\\.")[0] + ".ser";
+        } else {
+            System.out.println("Dieser Dateiname wurde nicht gefunden.");
+            return false;
+        }
+        System.out.println("IMAGE_NAME: " + IMAGE_NAME);
+        System.out.println("SERIALIZE_NAME: " + SERIALIZE_NAME);
+        return true;
     }
 
 
@@ -110,7 +176,7 @@ public class Main {
         serialize data nachdem das Geocoding abgeschlossen ist.
          */
         try {
-            FileOutputStream fos = new FileOutputStream(SERIALIZE_NAME);
+            FileOutputStream fos = new FileOutputStream("./serializedData/" + SERIALIZE_NAME);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
             oos.writeObject(allEntities);
             oos.close();
@@ -124,7 +190,7 @@ public class Main {
 
     private static ArrayList<PlaceEntity> deserializeEntities() {
         try {
-            FileInputStream fis = new FileInputStream(SERIALIZE_NAME);
+            FileInputStream fis = new FileInputStream("./serializedData/" + SERIALIZE_NAME);
             ObjectInputStream ois = new ObjectInputStream(fis);
             ArrayList<PlaceEntity> allEntities = (ArrayList<PlaceEntity>) ois.readObject();
             ois.close();
