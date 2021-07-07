@@ -1,6 +1,7 @@
 package de.dumpeldown.blitzer.ocr;
 
 import de.dumpeldown.blitzer.main.Main;
+import me.tongfei.progressbar.ProgressBar;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
 import org.apache.commons.io.FileUtils;
@@ -52,6 +53,7 @@ public class OCRManager {
     }
 
     public ArrayList<String> pngToText() {
+        ProgressBar pb = new ProgressBar("Test", getAmountOfDays());
         double xStart = 0, yStart = 0;
         ArrayList<String> straßen = new ArrayList<>();
         double width = bufferedImage.getWidth();
@@ -71,7 +73,7 @@ public class OCRManager {
         height = height - yStart;
         width -= (xStart * 2);
         for (int spalte = 0; spalte < getAmountOfDays(); spalte++) {
-            System.out.println("Bearbeite " + spalte + " von " + getAmountOfDays());
+            pb.step();
             /*
             System.out.println("Trying to read at coordinates: \n" +
                     "x = " + (xStart + ((width / 7) * spalte)) +

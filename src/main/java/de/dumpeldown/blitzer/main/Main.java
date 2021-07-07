@@ -5,6 +5,7 @@ import de.dumpeldown.blitzer.map.MapManager;
 import de.dumpeldown.blitzer.map.PlaceEntity;
 import de.dumpeldown.blitzer.ocr.OCRManager;
 import de.dumpeldown.blitzer.request.LocationRequestManager;
+import me.tongfei.progressbar.ProgressBar;
 import org.json.JSONObject;
 
 import java.io.*;
@@ -87,23 +88,18 @@ public class Main {
     }
 
     private static ArrayList<PlaceEntity> geocodeEntities(ArrayList<String> allStreets) {
+
         /*
         Hier wird das Geocoding aller Straßen durchgeführt.
          */
         ArrayList<PlaceEntity> allEntities = new ArrayList<>();
         ArrayList<String> errorStreets = new ArrayList<>();
-        int done = 1;
         int todo = allStreets.size();
         System.out.println("Starte 'forward-gecoding' für alle Straßen, erwartete Dauer " +
                 "circa " + todo + " Sekunden.");
 
-        for (String street : allStreets) {
+        for (String street : ProgressBar.wrap(allStreets, "Geocoding")) {
             System.out.println(street);
-            done++;
-            if (done % 10 == 0) {
-                System.out.println("[" + ((int) ((double) done / (double) todo) * 100) + "%]\t"
-                        + done + " / " + todo + " Straßen bearbeitet.");
-            }
             LocationRequestManager locationRequestManager = new LocationRequestManager(street + " essen");
             JSONObject jsonObject = locationRequestManager.makeRequest();
             if (jsonObject == null) {
