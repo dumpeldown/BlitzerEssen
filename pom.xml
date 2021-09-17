@@ -21,7 +21,7 @@
         <dependency>
             <groupId>net.sourceforge.tess4j</groupId>
             <artifactId>tess4j</artifactId>
-            <version>4.5.4</version>
+            <version>4.5.5</version>
         </dependency>
         <dependency>
             <groupId>org.brotli</groupId>
@@ -38,6 +38,11 @@
             <groupId>me.tongfei</groupId>
             <artifactId>progressbar</artifactId>
             <version>0.9.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.imgscalr</groupId>
+            <artifactId>imgscalr-lib</artifactId>
+            <version>4.2</version>
         </dependency>
     </dependencies>
 
