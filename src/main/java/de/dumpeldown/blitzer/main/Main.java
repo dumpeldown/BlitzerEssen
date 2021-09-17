@@ -1,144 +1,72 @@
 package de.dumpeldown.blitzer.main;
 
-import de.dumpeldown.blitzer.image.ImageManager;
+import de.dumpeldown.blitzer.map.GeocodeManager;
 import de.dumpeldown.blitzer.map.MapManager;
 import de.dumpeldown.blitzer.map.PlaceEntity;
 import de.dumpeldown.blitzer.ocr.OCRManager;
-import de.dumpeldown.blitzer.request.LocationRequestManager;
-import me.tongfei.progressbar.ProgressBar;
-import org.json.JSONObject;
+import de.dumpeldown.blitzer.serialize.SerializationHelper;
+import de.dumpeldown.blitzer.threading.BlitzerTask;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
-import java.util.stream.Collectors;
+import java.util.Timer;
 
 public class Main {
-    public static String IMAGE_NAME;
-    public static String SERIALIZE_NAME;
-    private static int errorCounter = 0;
 
+    private static final long RUNNER_DELAY = 10000000;
+    private static final int NUMBER_OF_TWEETS = 50;
     public static void main(String[] args) {
         ArrayList<String> allStreets;
         ArrayList<PlaceEntity> allEntities = new ArrayList<>();
-        boolean value;
-        do {
-            value = chooseFile();
-        } while (!value);
-        if (!new ImageManager(IMAGE_NAME).jfifToPng()) {
-            System.out.println("Fehler beim Convertieren und PNG!");
-            System.exit(-1);
-        }
-        File serializeFile = new File("./serializedData/" + SERIALIZE_NAME);
-        try {
-            if (serializeFile.createNewFile() || serializeFile.length() == 0) {
-                System.out.println("Die serialisierte Datei existiert nicht oder ist leer.");
+        String imageName = chooseMode();
 
-                OCRManager ocrManager = new OCRManager();
-                if (!ocrManager.init()) {
-                    System.out.println("Beende Program wegen Fehler.");
-                    return;
-                }
-                allStreets = getStreetNames(ocrManager);
-                allEntities = geocodeEntities(allStreets);
-                if (allEntities != null) {
-                    serializeEntities(allEntities);
-                } else {
-                    System.out.println("Exiting, please debug.");
-                    return;
-                }
-            } else {
-                System.out.println("Benutze serialisierte Daten aus einem vorherigen Durchlauf.");
-                allEntities = deserializeEntities();
-            }
-        } catch (IOException exception) {
-            exception.printStackTrace();
-        }
-        MapManager mapManager = new MapManager(allEntities);
-        mapManager.displayMap();
-    }
-
-    private static ArrayList<String> getStreetNames(OCRManager ocrManager) {
-        /*
-        Produziert 7 Strings, die die 7 Spalten des Bildes darstellen.
-        Einer dieser Strings enthält alle Straßen, diese werden dann an den linebreaks in
-         einzelne Worte gesplittet. Leere Zeilen werden dann entfernt.
-         */
-        ArrayList<String> allStreets = new ArrayList<>();
-        for (String s : ocrManager.pngToText()) {
-            ArrayList<String> toRemove = new ArrayList<>();
-            List<String> strings =
-                    Arrays.stream(s.split("\\r?\\n")).collect(Collectors.toList());
-            for (String str : strings) {
-                        /*
-                        Leere Zeilen und Feiertag rausfiltern.
-                         */
-                if (str.isEmpty() || str.equals("Feiertag")) {
-                    toRemove.add(str);
-                }
-            }
-            System.out.println("Insgesamt " + toRemove.size() + " leere zeilen entfernt " +
-                    "aus einer Spalte entfernt.");
-            strings.removeAll(toRemove);
-            allStreets.addAll(strings);
-        }
-        return allStreets;
-    }
-
-    private static ArrayList<PlaceEntity> geocodeEntities(ArrayList<String> allStreets) {
-
-        /*
-        Hier wird das Geocoding aller Straßen durchgeführt.
-         */
-        ArrayList<PlaceEntity> allEntities = new ArrayList<>();
-        ArrayList<String> errorStreets = new ArrayList<>();
-        int todo = allStreets.size();
-        System.out.println("Starte 'forward-gecoding' für alle Straßen, erwartete Dauer " +
-                "circa " + todo + " Sekunden.");
-
-        for (String street : ProgressBar.wrap(allStreets, "Geocoding")) {
-            System.out.println(street);
-            LocationRequestManager locationRequestManager = new LocationRequestManager(street + " essen");
-            JSONObject jsonObject = locationRequestManager.makeRequest();
-            if (jsonObject == null) {
-                System.out.println("Fehler beim Abrufen der Daten der 'forward-geocoding' " +
-                        "API, versuche jetzt nächste Straße.");
-                errorCounter++;
-                if (errorCounter == 10) {
-                    System.out.println("Aborting geocoding, getting a lot of errors.\n" +
-                            "Maybe your api key is not set correctly?");
-                    return null;
-                }
-                continue;
-            }
-            PlaceEntity entity = new PlaceEntity(jsonObject);
-            if (entity.getType().equals("undefined")) {
-                errorStreets.add(street);
-            } else {
-                allEntities.add(entity);
-            }
-            /*
-             * Zwischen Request muss ein Timeout von 500ms liegen, da in meinem LocationIQ
-             *  Plan 2 req/sec erlaubt sind. Mit 1000ms bin ich dann auf der sicheren Seite.
-             */
+        if (!imageName.isBlank()) {
+            GeocodeManager geocodeManager = new GeocodeManager();
+            String serializeName = imageName.split("\\.")[0] + ".ser";
+            File serializeFile = new File("./serializedData/" + serializeName);
             try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                if (serializeFile.createNewFile() || serializeFile.length() == 0) {
+                    System.out.println("Für dieses Bild wird nun Texterkennung durchgeführt.");
+
+                    OCRManager ocrManager = new OCRManager();
+                    if (!ocrManager.init(imageName)) {
+                        System.out.println("Beende Program wegen Fehler.");
+                        return;
+                    }
+                    allStreets = ocrManager.getStreetNames();
+                    allEntities = geocodeManager.geocodeEntities(allStreets);
+                    if (allEntities != null) {
+                        SerializationHelper.serializeEntities(allEntities, serializeName);
+                    } else {
+                        System.out.println("Exiting, please debug.");
+                        return;
+                    }
+                } else {
+                    System.out.println("Benutze serialisierte Daten aus einem vorherigen Durchlauf.");
+                    allEntities = SerializationHelper.deserializeEntities(serializeName);
+                }
+            } catch (IOException exception) {
+                exception.printStackTrace();
             }
+            MapManager mapManager = new MapManager(allEntities);
+            mapManager.displayMap();
         }
-        System.out.println("Bei diesen Straßen ist ein Problem aufgetreten (Wahrscheinlich OCR Fehler):");
-        for (String error : errorStreets) {
-            System.out.println(error);
-        }
-        return allEntities;
     }
 
-    private static boolean chooseFile() {
+
+    private static String chooseMode() {
+        Scanner sc = new Scanner(System.in);
+        System.out.println("(1)Einzelnes Bild verwenden oder \n (2) Dauerläufer-Thread starten?");
+        if (sc.nextInt() == 2) {
+            Timer blitzerTimer = new Timer();
+            blitzerTimer.schedule(new BlitzerTask(Main.NUMBER_OF_TWEETS), 0, RUNNER_DELAY);
+            return "";
+        }
         File folder = new File(".\\images");
-        List<File> listOfFiles = Arrays.asList(folder.listFiles());
+        List<File> listOfFiles = List.of(folder.listFiles());
         ArrayList<File> filteredFiles = new ArrayList<>();
 
         for (File f : listOfFiles) {
@@ -152,52 +80,13 @@ public class Main {
             i++;
         }
         System.out.println("Welche Datei willst du als Karte darstellen?");
-        Scanner sc = new Scanner(System.in);
+
         int auswahl = sc.nextInt();
-        if (auswahl <= filteredFiles.size() && auswahl > 0) {
-            IMAGE_NAME = filteredFiles.get(auswahl - 1).getName();
-            SERIALIZE_NAME = IMAGE_NAME.split("\\.")[0] + ".ser";
-        } else {
+        if (!(auswahl <= filteredFiles.size() && auswahl > 0)) {
             System.out.println("Dieser Dateiname wurde nicht gefunden.");
-            return false;
+            return "";
+
         }
-        System.out.println("IMAGE_NAME: " + IMAGE_NAME);
-        System.out.println("SERIALIZE_NAME: " + SERIALIZE_NAME);
-        return true;
-    }
-
-
-    private static void serializeEntities(ArrayList<PlaceEntity> allEntities) {
-        /*
-        serialize data nachdem das Geocoding abgeschlossen ist.
-         */
-        try {
-            FileOutputStream fos = new FileOutputStream("./serializedData/" + SERIALIZE_NAME);
-            ObjectOutputStream oos = new ObjectOutputStream(fos);
-            oos.writeObject(allEntities);
-            oos.close();
-            fos.close();
-        } catch (IOException e) {
-            System.out.println("Fehler beim Serialisieren der ArrayList mit allen Entities.");
-            e.printStackTrace();
-        }
-
-    }
-
-    private static ArrayList<PlaceEntity> deserializeEntities() {
-        try {
-            FileInputStream fis = new FileInputStream("./serializedData/" + SERIALIZE_NAME);
-            ObjectInputStream ois = new ObjectInputStream(fis);
-            ArrayList<PlaceEntity> allEntities = (ArrayList<PlaceEntity>) ois.readObject();
-            ois.close();
-            fis.close();
-            return allEntities;
-        } catch (IOException ioe) {
-            ioe.printStackTrace();
-        } catch (ClassNotFoundException c) {
-            System.out.println("Class not found");
-            c.printStackTrace();
-        }
-        return null;
+        return filteredFiles.get(auswahl - 1).getName();
     }
 }
