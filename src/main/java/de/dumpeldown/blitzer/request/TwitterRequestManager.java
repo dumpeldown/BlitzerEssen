@@ -7,40 +7,24 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class TwitterRequestManager {
     private static int numberOfLastTweets;
     private static String userID;
-    private static List<String> detectWords;
+    private static final ArrayList<String> detectWords = new ArrayList<>(List.of("blitz"));
 
-    TwitterRequestManager(String userID, int numberOfLastTweets) {
-        this.numberOfLastTweets = numberOfLastTweets;
-        this.userID = userID;
+    public TwitterRequestManager(String _userID, int _numberOfLastTweets) {
+        numberOfLastTweets = _numberOfLastTweets;
+        userID = _userID;
     }
 
     public static void main(String[] args) {
-        TwitterRequestManager twitterRequestManager = new TwitterRequestManager("413192825", 20);
-        for (URL url : twitterRequestManager.getURLs()) {
-            System.out.println(url.toString());
-            saveImage(url);
-        }
     }
 
-    private static void saveImage(URL url) {
-        try (InputStream in = url.openStream()) {
-            Files.copy(in, Paths.get("./images/" + url.toString().split("/")[4]));
-        } catch (IOException e) {
-            System.out.println("Images already downloaded.");
-        }
-    }
 
     public ArrayList<URL> getURLs() {
         Request request = initRequest();
@@ -91,7 +75,6 @@ public class TwitterRequestManager {
     }
 
     private static ArrayList<String> findMediaKeys(JSONObject fullObj) {
-        ArrayList<String> detectWords = new ArrayList<>(Arrays.asList("Blitzer", "geblitzt", "Standort", "Kufen", "Fahrrad", "Polizei", "Achtung"));
         ArrayList<String> foundMediaKeys = new ArrayList<>();
         JSONArray jsonArray = fullObj.getJSONArray("data");
         System.out.println("Found " + jsonArray.length() + " tweets with media.");
@@ -101,10 +84,12 @@ public class TwitterRequestManager {
                 String full = jsonObject.getString("text");
                 for (String token : full.split(" ")) {
                     token = token.replaceAll("[^a-zA-Z0-9]", "");
-                    if (detectWords.contains(token)) {
-                        System.out.println("A keyword was detected in this tweet: " + full);
-                        String media_key = jsonObject.getJSONObject("attachments").getJSONArray("media_keys").get(0).toString();
-                        if (!(media_key == null)) foundMediaKeys.add(media_key);
+                    for (String dword : detectWords) {
+                        if (token.toLowerCase().contains(dword)) {
+                            System.out.println("Detected keyword: " + token);
+                            String media_key = jsonObject.getJSONObject("attachments").getJSONArray("media_keys").get(0).toString();
+                            if (!(media_key == null)) foundMediaKeys.add(media_key);
+                        }
                     }
                 }
             }
