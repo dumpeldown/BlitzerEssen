@@ -26,7 +26,6 @@ public class PlaceEntity implements Serializable {
         try {
             this.type = object.getString("class");
         }catch(JSONException jsonException){
-            System.out.println("Attribut 'class' bei diesem Datensatz nicht vorhanden.");
             this.type = "undefined";
         }
     }
